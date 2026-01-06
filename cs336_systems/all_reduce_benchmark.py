@@ -88,7 +88,7 @@ def distributed_all_reduce(rank, world_size, nums, back_type):
 def main():
     torch.set_num_threads(1)
     world_size = [2, 4, 6]
-    backend_type = ["gloo"]
+    backend_type = ["gloo", "nccl"]
     num_elements_list = [1, 10, 100, 1000]  # MB
 
     for b_type in backend_type:
