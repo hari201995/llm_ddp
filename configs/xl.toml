@@ -1,5 +1,6 @@
 # lm_config.toml
 [training.params]
+# Training parameters
 epochs = 1
 steps_per_epoch = 15
 batch_size = 8
@@ -9,6 +10,10 @@ warmup_iter = 100
 theta = 10000
 cooldown_iter = 12
 checkpoint_every = 5
+# DDP params
+world_size = 2
+num_nodes = 1
+
 
 [data.params]
 path = "tiny_stories_train_token_out/"
