@@ -1,0 +1,12 @@
+Case : World Size = 2 |     item len = 250 |     time_taken = 0.5757185697555542    
+Case : World Size = 2 |     item len = 2500 |     time_taken = 0.5965948581695557    
+Case : World Size = 2 |     item len = 25000 |     time_taken = 0.6557356834411621    
+Case : World Size = 2 |     item len = 250000 |     time_taken = 0.5925969839096069    
+Case : World Size = 4 |     item len = 250 |     time_taken = 0.8366614818572998    
+Case : World Size = 4 |     item len = 2500 |     time_taken = 0.9841358184814453    
+Case : World Size = 4 |     item len = 25000 |     time_taken = 0.6791378498077393    
+Case : World Size = 4 |     item len = 250000 |     time_taken = 0.8159929513931274    
+Case : World Size = 6 |     item len = 250 |     time_taken = 1.351331400871277    
+Case : World Size = 6 |     item len = 2500 |     time_taken = 1.4802940130233764    
+Case : World Size = 6 |     item len = 25000 |     time_taken = 1.4424670219421387    
+Case : World Size = 6 |     item len = 250000 |     time_taken = 1.3747103214263916    

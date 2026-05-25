@@ -266,9 +266,11 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
     ##########################
     # Variable initializations
     ##########################
+
     # To tokenize data
     total_epochs = cfg["training"]["params"]["epochs"]
     total_steps_per_epoch = cfg["training"]["params"]["steps_per_epoch"]
+
     # model  & training params
     model_name = cfg["model"]["name"]
     shards_used = torch.zeros(total_steps_per_epoch, device="cpu", dtype=torch.long)
@@ -277,21 +279,26 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
     total_epochs = cfg["training"]["params"]["epochs"]
     total_steps_per_epoch = cfg["training"]["params"]["steps_per_epoch"]
     shards_used = torch.zeros(total_steps_per_epoch, device="cpu", dtype=torch.int64)
+
     # Loss array
     ce_loss = []
     ema_ce_loss = []
+
     # model  & training params
     B = cfg["training"]["params"]["batch_size"]
     T = cfg["model"]["params"]["context_length"]
     theta = cfg["training"]["params"]["theta"]
+
     # LR params
     alpha_max = cfg["training"]["params"]["alpha_max"]
     alpha_min = cfg["training"]["params"]["alpha_min"]
     warmup_iter = cfg["training"]["params"]["warmup_iter"]
     num_cosine_iter = cfg["training"]["params"]["cooldown_iter"]
+
     # checkpoint variables
     checkpoint_every = cfg["training"]["params"]["checkpoint_every"]
     log_every_steps = 20
+
     # Validation params
     validate_every_steps = cfg["validation"]["params"]["validate_every_steps"]
     val_loss = []
@@ -413,9 +420,6 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                     if hasattr(tokenized_data, "_mmap"):
                         tokenized_data._mmap.close()
 
-                # safe to move again
-                x = x.to(device=device)
-                target = target.to(device=device)
                 # token positions
                 token_pos = torch.arange(T, device=device)
                 # get the learning rate
@@ -517,10 +521,8 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
 
                         last_val = val_loss[-1] if val_loss else float("nan")
 
-                        log.info(
-                            f"step={running_counter} loss={loss.item():.4f}\
-                                lr={current_lr:.3e} val_loss={last_val}"
-                        )
+                        log.info(f"step={running_counter} loss={loss.item():.4f}\
+                                lr={current_lr:.3e} val_loss={last_val}")
 
                         # wandb counter
                         log_dict_wandb = {

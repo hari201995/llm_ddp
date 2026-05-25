@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Type
 
 import torch
+from cs336_systems import DDPIndividualParameters
+from cs336_systems import DDPAsyncParameter
+from cs336_systems import DDPOverlapBucket
 
 
 def get_flashattention_autograd_function_pytorch() -> Type:
@@ -54,7 +57,8 @@ def get_ddp_individual_parameters(module: torch.nn.Module) -> torch.nn.Module:
         Instance of a DDP class.
     """
     # For example: return DDPIndividualParameters(module)
-    raise NotImplementedError
+    # return DDPIndividualParameters.DDPIndividualParameters(module)
+    return DDPAsyncParameter.DDPAsyncParameter(module)
 
 
 def ddp_individual_parameters_on_after_backward(
@@ -71,7 +75,9 @@ def ddp_individual_parameters_on_after_backward(
             Optimizer being used with the DDP-wrapped model.
     """
     # For example: ddp_model.finish_gradient_synchronization()
-    raise NotImplementedError
+    # ddp_model.param_grad_sync()
+    # ddp_model.batched_grad_sync()
+    ddp_model.gradient_synchronization()
 
 
 def get_ddp_bucketed(module: torch.nn.Module, bucket_size_mb: float) -> torch.nn.Module:
@@ -92,7 +98,7 @@ def get_ddp_bucketed(module: torch.nn.Module, bucket_size_mb: float) -> torch.nn
     Returns:
         Instance of a DDP class.
     """
-    raise NotImplementedError
+    return DDPOverlapBucket.DDPOverlapBucket(module, bucket_size_mb)
 
 
 def ddp_bucketed_on_after_backward(
@@ -109,7 +115,7 @@ def ddp_bucketed_on_after_backward(
             Optimizer being used with the DDP-wrapped model.
     """
     # For example: ddp_model.finish_gradient_synchronization()
-    raise NotImplementedError
+    ddp_model.gradient_synchronization()  # type: ignore
 
 
 def ddp_bucketed_on_train_batch_start(
@@ -124,7 +130,7 @@ def ddp_bucketed_on_train_batch_start(
         optimizer: torch.optim.Optimizer
             Optimizer being used with the DDP-wrapped model.
     """
-    raise NotImplementedError
+    ddp_model.grad_sync_reset()  # type: ignore
 
 
 def get_sharded_optimizer(

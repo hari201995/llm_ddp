@@ -2,18 +2,25 @@
 [training.params]
 # Training parameters
 epochs = 1
-steps_per_epoch = 15
-batch_size = 8
+steps_per_epoch = 50
+batch_size = 128
 alpha_max = 0.003
 alpha_min = 0.0003
-warmup_iter = 100
+warmup_iter = 5
 theta = 10000
-cooldown_iter = 12
+cooldown_iter = 45
 checkpoint_every = 5
 # DDP params
 world_size = 2
 num_nodes = 1
 
+[validation.params]
+validate_every_steps = 5
+
+[validation.data]
+path = "tiny_stories_valid_token_out/"
+tag = "shard_"
+num_shards = 10
 
 [data.params]
 path = "tiny_stories_train_token_out/"

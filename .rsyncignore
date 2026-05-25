@@ -1,0 +1,59 @@
+# ---------- Python / env ----------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+.venv/
+.conda/
+.uv/
+.env
+.env.*
+*.egg-info/
+dist/
+build/
+
+# ---------- Notebooks / caches ----------
+.ipynb_checkpoints/
+
+# ---------- Editors / OS junk ----------
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# ---------- Git ----------
+.git/
+.gitmodules
+.gitignore
+
+# ---------- Data / artifacts (big stuff) ----------
+data/
+datasets/
+*.bin
+*.npz
+*.npy
+*.pt
+*.ckpt
+*.pth
+checkpoints/
+runs/
+wandb/
+outputs/
+logs/
+tensorboard/
+*.log
+
+# ---------- Media / figures ----------
+figures/
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.pdf
+
+# ---------- Node / web ----------
+node_modules/
+.next/
+.out/
