@@ -6,6 +6,7 @@ import torch
 from cs336_systems import DDPIndividualParameters
 from cs336_systems import DDPAsyncParameter
 from cs336_systems import DDPOverlapBucket
+from cs336_systems import OptimizerSharding
 
 
 def get_flashattention_autograd_function_pytorch() -> Type:
@@ -151,4 +152,4 @@ def get_sharded_optimizer(
     Returns:
         Instance of sharded optimizer.
     """
-    raise NotImplementedError
+    return OptimizerSharding.OptimizerSharding(params, optimizer_cls, **kwargs)
