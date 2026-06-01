@@ -114,7 +114,7 @@ python launch.py train --expt-name run1 --gpu-type a100 --gpu-count 1 --max-hour
 ```
 
 - Shows estimated cost — prompts for confirmation before launching
-- Spins up GPU instance, clones repo via SSH agent forwarding, installs deps
+- Spins up GPU instance, clones the `devel` branch via SSH agent forwarding, installs deps
 - Auto-patches `world_size` in the config to match `--gpu-count`
 - Injects `WANDB_API_KEY` into the training environment
 - Streams training logs live to your terminal
