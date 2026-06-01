@@ -111,6 +111,7 @@ Lists all available instance types with hourly price and regions that have capac
 
 ```sh
 python launch.py train --expt-name run1 --gpu-type a100 --gpu-count 1 --max-hours 8
+python launch.py train --expt-name single_small --config configs/small.toml --gpu-type a100 --gpu-count 1 --max-hours 3
 ```
 
 - Shows estimated cost — prompts for confirmation before launching

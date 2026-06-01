@@ -30,7 +30,7 @@ import paramiko.agent
 import requests
 
 # ── project constants ──────────────────────────────────────────────────────────
-REPO_URL         = "git@github.com:hari201995/llm_ddp.git"
+REPO_URL         = "https://github.com/hari201995/llm_ddp.git"
 LOCAL_TRAIN_DATA = Path("/Users/hari/Documents/backups/tiny_stories_train_token_out")
 LOCAL_VALID_DATA = Path("/Users/hari/Documents/backups/tiny_stories_valid_token_out")
 DATA_MOUNT       = "/home/ubuntu/data"
@@ -156,19 +156,30 @@ def wait_for_instance(api_key: str, instance_id: str) -> dict:
         time.sleep(POLL_INTERVAL)
 
 
-def find_instance_type(instance_types: dict, gpu_type: str, gpu_count: int) -> tuple[str, dict]:
-    """Find instance type matching gpu_type and gpu_count. Returns (type_name, type_info)."""
+def find_instance_type(instance_types: dict, gpu_type: str, gpu_count: int, region: str = None) -> tuple[str, dict]:
+    """Find instance type matching gpu_type and gpu_count, optionally filtered by region availability.
+
+    gpu_count is matched against the instance name, e.g. gpu_1x_a100_sxm4 → count=1.
+    """
+    import re
     matches = []
     for name, info in instance_types.items():
         it = info.get("instance_type", {})
         desc = it.get("description", "").lower()
-        it_gpu_count = it.get("gpu_count", 0)
-        if gpu_type.lower() in desc and it_gpu_count == gpu_count:
-            matches.append((name, info))
+        if gpu_type.lower() not in desc:
+            continue
+        # parse count from name: gpu_Nx_... → N
+        m = re.match(r"gpu_(\d+)x_", name)
+        if not m or int(m.group(1)) != gpu_count:
+            continue
+        if region:
+            available = [r["name"] for r in info.get("regions_with_capacity_available", [])]
+            if region not in available:
+                continue
+        matches.append((name, info))
 
     if not matches:
         return None, None
-    # Return cheapest match
     return min(matches, key=lambda x: x[1]["instance_type"].get("price_cents_per_hour", 9999))
 
 
@@ -381,19 +392,13 @@ def cmd_train(args):
         print("ERROR: Setup not complete. Run 'python launch.py setup' first.")
         sys.exit(1)
 
-    # Find matching instance type
+    # Find matching instance type available in our region
     instance_types = get_instance_types(api_key)
-    inst_type_name, inst_info = find_instance_type(instance_types, args.gpu_type, args.gpu_count)
+    inst_type_name, inst_info = find_instance_type(instance_types, args.gpu_type, args.gpu_count, region)
 
     if not inst_type_name:
-        print(f"ERROR: No instance type found for gpu_type='{args.gpu_type}' gpu_count={args.gpu_count}.")
-        print("Run 'python launch.py gpus' to see available types.")
-        sys.exit(1)
-
-    available_regions = [r["name"] for r in inst_info.get("regions_with_capacity_available", [])]
-    if region not in available_regions:
-        print(f"ERROR: {inst_type_name} not available in your region ({region}).")
-        print(f"Available regions: {available_regions}")
+        print(f"ERROR: No '{args.gpu_type}' x{args.gpu_count} instance available in region '{region}'.")
+        print("Run 'python launch.py gpus' to see available types and regions.")
         sys.exit(1)
 
     # Cost check
@@ -432,11 +437,18 @@ def cmd_train(args):
 
         client = ssh_connect(host)
 
-        # Clone repo via SSH agent forwarding
-        run_cmd(client, f"git clone --branch devel {REPO_URL} {REPO_DIR}", "Cloning repo")
+        # Clone repo using HTTPS with GitHub token
+        github_token = os.environ.get("GITHUB_TOKEN", "")
+        if not github_token:
+            print("ERROR: GITHUB_TOKEN not set. Run: export GITHUB_TOKEN=your_personal_access_token")
+            raise RuntimeError("GITHUB_TOKEN not set")
+        authed_url = REPO_URL.replace("https://", f"https://{github_token}@")
+        run_cmd(client, f"git clone --branch devel {authed_url} {REPO_DIR}", "Cloning repo")
 
         # Install dependencies
-        run_cmd(client, f"cd {REPO_DIR} && pip install uv -q && uv sync", "Installing dependencies")
+        run_cmd(client,
+                f"cd {REPO_DIR} && python3 -m pip install uv -q && ~/.local/bin/uv sync",
+                "Installing dependencies")
 
         # Patch config: data paths + world_size
         run_cmd(

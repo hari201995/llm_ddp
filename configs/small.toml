@@ -9,6 +9,7 @@ warmup_iter = 10
 theta = 10000
 cooldown_iter = 45
 checkpoint_every = 5
+world_size = 1
 
 [data.params]
 path = "tiny_stories_train_token_out/"
