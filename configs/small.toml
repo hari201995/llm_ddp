@@ -2,7 +2,7 @@
 [training.params]
 epochs = 1
 steps_per_epoch = 50
-batch_size = 256
+batch_size = 16
 alpha_max = 0.003
 alpha_min = 0.0003
 warmup_iter = 10

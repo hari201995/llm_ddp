@@ -68,7 +68,7 @@ class MHA(nn.Module):
                 x.shape[-2],
                 x.shape[-2],
                 dtype=torch.bool,
-                device=device,
+                device=x.device,
             ),
         )
         output_mha = scaled_dot_product_attention(Q, K, V, mask=M)
