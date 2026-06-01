@@ -433,7 +433,7 @@ def cmd_train(args):
         client = ssh_connect(host)
 
         # Clone repo via SSH agent forwarding
-        run_cmd(client, f"git clone {REPO_URL} {REPO_DIR}", "Cloning repo")
+        run_cmd(client, f"git clone --branch devel {REPO_URL} {REPO_DIR}", "Cloning repo")
 
         # Install dependencies
         run_cmd(client, f"cd {REPO_DIR} && pip install uv -q && uv sync", "Installing dependencies")
