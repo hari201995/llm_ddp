@@ -33,7 +33,7 @@ import requests
 REPO_URL         = "https://github.com/hari201995/llm_ddp.git"
 LOCAL_TRAIN_DATA = Path("/Users/hari/Documents/backups/tiny_stories_train_token_out")
 LOCAL_VALID_DATA = Path("/Users/hari/Documents/backups/tiny_stories_valid_token_out")
-DATA_MOUNT       = "/home/ubuntu/data"
+DATA_MOUNT_BASE  = "/home/ubuntu"   # Lambda mounts filesystems at /home/ubuntu/<fs-name>
 REPO_DIR         = "/home/ubuntu/llm_ddp"
 SSH_USERNAME     = "ubuntu"                   # Lambda uses ubuntu, not root
 DOCKER_IMAGE     = "lambdalabs/worker:pytorch2.3.1-cuda12.1.0"
@@ -345,18 +345,20 @@ def cmd_setup(args):
     inst_id = inst["id"]
     print(f"Instance: {inst_id}")
 
+    data_mount = f"{DATA_MOUNT_BASE}/{fs_name}"
+
     try:
         inst = wait_for_instance(api_key, inst_id)
         host = inst["ip"]
         time.sleep(15)
 
         client = ssh_connect(host)
-        run_cmd(client, f"mkdir -p {DATA_MOUNT}")
+        run_cmd(client, f"mkdir -p {data_mount}")
         client.close()
 
-        print("\nUploading training data to filesystem...")
-        rsync_up(host, LOCAL_TRAIN_DATA, f"{DATA_MOUNT}/")
-        rsync_up(host, LOCAL_VALID_DATA, f"{DATA_MOUNT}/")
+        print(f"\nUploading training data to filesystem at {data_mount}...")
+        rsync_up(host, LOCAL_TRAIN_DATA, f"{data_mount}/")
+        rsync_up(host, LOCAL_VALID_DATA, f"{data_mount}/")
         print("Upload complete.")
     finally:
         print(f"\nTerminating upload instance {inst_id}...")
@@ -387,6 +389,7 @@ def cmd_train(args):
     fs_name      = cfg.get("filesystem_name")
     region       = cfg.get("region")
     ssh_key_name = cfg.get("ssh_key_name")
+    data_mount   = f"{DATA_MOUNT_BASE}/{fs_name}"
 
     if not all([fs_name, region, ssh_key_name]):
         print("ERROR: Setup not complete. Run 'python launch.py setup' first.")
@@ -453,9 +456,11 @@ def cmd_train(args):
         # Patch config: data paths + world_size
         run_cmd(
             client,
-            f"sed -i 's|tiny_stories_train_token_out|{DATA_MOUNT}/tiny_stories_train_token_out|g' {REPO_DIR}/{args.config} && "
-            f"sed -i 's|tiny_stories_valid_token_out|{DATA_MOUNT}/tiny_stories_valid_token_out|g' {REPO_DIR}/{args.config} && "
-            f"sed -i 's/world_size = [0-9]*/world_size = {args.gpu_count}/' {REPO_DIR}/{args.config}",
+            f"sed -i 's|tiny_stories_train_token_out|{data_mount}/tiny_stories_train_token_out|g' {REPO_DIR}/{args.config} && "
+            f"sed -i 's|tiny_stories_valid_token_out|{data_mount}/tiny_stories_valid_token_out|g' {REPO_DIR}/{args.config} && "
+            f"grep -q 'world_size' {REPO_DIR}/{args.config} "
+            f"  && sed -i 's/world_size = [0-9]*/world_size = {args.gpu_count}/' {REPO_DIR}/{args.config} "
+            f"  || echo 'world_size = {args.gpu_count}' >> {REPO_DIR}/{args.config}",
             f"Patching config (world_size={args.gpu_count}, data paths)",
         )
 

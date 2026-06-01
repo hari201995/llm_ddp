@@ -271,7 +271,7 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                 device_type=device.type, dtype=autocast_dtype, enabled=amp_flag
             ):
                 # Run the language model
-                y = LM_DDP.forward(
+                y = LM_DDP.module.tranform_lm_model(
                     x,
                     rope_theta=theta,
                     token_positions=token_pos[: x.size(1)],
