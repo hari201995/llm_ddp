@@ -36,3 +36,14 @@ lr = 0.01
 weight_decay = 0.01
 betas = [0.9, 0.95]
 eps = 1e-8
+
+[validation.params]
+# make sure validate every steps is N* checkpoint every steps
+validate_every_steps = 10
+vocab = "tokenizer/tiny_stories_train_vocab.pkl"
+num_tries = 10
+
+[validation.data]
+path = "tiny_stories_valid_token_out"
+tag = "shard_"
+num_shards = 10
