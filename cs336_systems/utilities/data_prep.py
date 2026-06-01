@@ -13,7 +13,7 @@ def data_prep(cfg):
     folder_path = cfg["data"]["params"]["path"]
     file_tag = cfg["data"]["params"]["tag"]
     num_shards = cfg["data"]["params"]["num_shards"]
-    offset_file = 900
+    offset_file = 0
 
     # Validation params
     validation_data_path = cfg["validation"]["data"]["path"]
