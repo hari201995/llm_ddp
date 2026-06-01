@@ -57,6 +57,108 @@ Python 3.12.10 (main, Apr  9 2025, 04:03:51) [Clang 20.1.0 ] on linux
 
 `uv run` installs dependencies automatically as dictated in the `pyproject.toml` file.
 
+## Lambda Labs Training Launcher
+
+`launch.py` automates the full training workflow on Lambda Labs — from provisioning a GPU instance to downloading weights — without touching the Lambda Labs website.
+
+### Prerequisites
+
+```sh
+pip install paramiko requests
+export LAMBDA_API_KEY=your_key_here      # from cloud.lambdalabs.com/api-keys
+export WANDB_API_KEY=your_key_here       # from wandb.ai account settings
+```
+
+Make sure your GitHub SSH key is configured (`ssh -T git@github.com` should say "successfully authenticated").
+
+### Commands
+
+#### 1. Check GPU availability (do this first)
+
+```sh
+python launch.py datacenters --gpu-type a100
+```
+
+Shows which regions have your target GPU available and the hourly price.
+
+> **Important:** Your persistent filesystem and GPU instance must be in the same region.
+
+#### 2. One-time setup — create filesystem and upload data
+
+First, create a persistent filesystem manually at the Lambda Labs dashboard (Storage section). Name it something memorable (e.g. `LM336`), pick the region from step 1, and set size to 200 GB+.
+
+Then run:
+
+```sh
+python launch.py setup --filesystem-name LM336
+```
+
+- Verifies the filesystem exists via API
+- Spins up a temporary instance, uploads your local training data to the filesystem, terminates the instance
+- Saves filesystem name and region to `~/.llm_ddp_lambda.json` — all future runs use it automatically
+
+Only run this once. Data lives on the filesystem permanently.
+
+#### 3. Check GPU pricing
+
+```sh
+python launch.py gpus
+```
+
+Lists all available instance types with hourly price and regions that have capacity.
+
+#### 4. Launch a training run
+
+```sh
+python launch.py train --expt-name run1 --gpu-type a100 --gpu-count 1 --max-hours 8
+```
+
+- Shows estimated cost — prompts for confirmation before launching
+- Spins up GPU instance, clones repo via SSH agent forwarding, installs deps
+- Auto-patches `world_size` in the config to match `--gpu-count`
+- Injects `WANDB_API_KEY` into the training environment
+- Streams training logs live to your terminal
+- Downloads weights and logs when done, terminates the instance
+- If training crashes, still downloads whatever artifacts exist before terminating
+- Saves instance ID locally so you can reconnect if your Mac disconnects
+
+```
+Option            Default                    Description
+────────────────────────────────────────────────────────────────────────────────
+--expt-name       (required)                 Experiment name
+--config          configs/lm_config.toml     Config file path inside the repo
+--gpu-type        a100                       GPU name — partial match on description
+--gpu-count       1                          Number of GPUs (1, 2, 4, 8)
+--max-hours       10.0                       Used for cost estimate only, does not stop training
+--output-dir      ./artifacts_remote         Local dir for downloaded weights and logs
+```
+
+#### 5. Reconnect to an existing run
+
+If your Mac disconnects mid-training:
+
+```sh
+python launch.py attach
+```
+
+Reconnects to the running instance, optionally waits for training to finish, downloads artifacts, and terminates.
+
+### Typical workflow
+
+```sh
+# First time only
+python launch.py datacenters --gpu-type a100
+# → create filesystem in Lambda dashboard, then:
+python launch.py setup --filesystem-name LM336
+
+# Every training run
+python launch.py gpus                               # check availability and pricing
+python launch.py train --expt-name run1 \
+    --gpu-type a100 --gpu-count 1 --max-hours 8
+```
+
+---
+
 ## Submitting
 
 To submit, run `./test_and_make_submission.sh` . This script will install your

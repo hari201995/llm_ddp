@@ -1,13 +1,13 @@
 # lm_config.toml
 [training.params]
 epochs = 1
-steps_per_epoch = 15
-batch_size = 8
+steps_per_epoch = 50
+batch_size = 256
 alpha_max = 0.003
 alpha_min = 0.0003
-warmup_iter = 100
+warmup_iter = 10
 theta = 10000
-cooldown_iter = 12
+cooldown_iter = 45
 checkpoint_every = 5
 
 [data.params]
@@ -24,7 +24,7 @@ context_length = 256
 num_layers = 12
 d_model = 768
 num_heads = 12
-d_ff = 3072
+d_ff = 2048
 device = "cuda"
 
 [optimizer]
