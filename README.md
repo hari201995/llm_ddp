@@ -122,6 +122,7 @@ python launch.py train --expt-name single_small --config configs/small.toml --gp
 - Downloads weights and logs when done, terminates the instance
 - If training crashes, still downloads whatever artifacts exist before terminating
 - Saves instance ID locally so you can reconnect if your Mac disconnects
+- Use `--keep-alive` to skip auto-termination (useful for debugging failures)
 
 ```
 Option            Default                    Description
@@ -132,6 +133,7 @@ Option            Default                    Description
 --gpu-count       1                          Number of GPUs (1, 2, 4, 8)
 --max-hours       10.0                       Used for cost estimate only, does not stop training
 --output-dir      ./artifacts_remote         Local dir for downloaded weights and logs
+--keep-alive      false                      Keep instance running after training ends or fails
 ```
 
 #### 5. Reconnect to an existing run
@@ -143,6 +145,16 @@ python launch.py attach
 ```
 
 Reconnects to the running instance, optionally waits for training to finish, downloads artifacts, and terminates.
+
+#### 6. Terminate instance manually
+
+If you used `--keep-alive` or need to force-terminate:
+
+```sh
+python launch.py terminate
+```
+
+Terminates the active instance saved in `~/.llm_ddp_lambda.json`.
 
 ### Typical workflow
 
@@ -156,6 +168,11 @@ python launch.py setup --filesystem-name LM336
 python launch.py gpus                               # check availability and pricing
 python launch.py train --expt-name run1 \
     --gpu-type a100 --gpu-count 1 --max-hours 8
+
+# Debugging a failed run
+python launch.py train --expt-name run1 --keep-alive ...
+ssh ubuntu@<ip-shown-in-output>
+python launch.py terminate                          # when done
 ```
 
 ---
