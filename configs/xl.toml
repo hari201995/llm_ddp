@@ -16,6 +16,8 @@ num_nodes = 1
 
 [validation.params]
 validate_every_steps = 5
+vocab = "tokenizer/tiny_stories_train_vocab.pkl"
+num_tries = 10
 
 [validation.data]
 path = "tiny_stories_valid_token_out/"
@@ -43,6 +45,7 @@ device = "cuda"
 name = "cs336_basics.adamW.AdamW"
 
 [optimizer.params]
+lr = 0.003
 weight_decay = 0.01
 betas = [0.9, 0.95]
 eps = 1e-8

@@ -1,14 +1,14 @@
 # lm_config.toml
 [training.params]
 epochs = 1
-steps_per_epoch = 50
+steps_per_epoch = 415000
 batch_size = 16
 alpha_max = 0.003
 alpha_min = 0.0003
-warmup_iter = 10
+warmup_iter = 1000
 theta = 10000
-cooldown_iter = 45
-checkpoint_every = 5
+cooldown_iter = 373500
+checkpoint_every = 5000
 world_size = 1
 
 [data.params]
@@ -39,9 +39,9 @@ eps = 1e-8
 
 [validation.params]
 # make sure validate every steps is N* checkpoint every steps
-validate_every_steps = 10
+validate_every_steps = 500
 vocab = "tokenizer/tiny_stories_train_vocab.pkl"
-num_tries = 10
+num_tries = 3
 
 [validation.data]
 path = "tiny_stories_valid_token_out"

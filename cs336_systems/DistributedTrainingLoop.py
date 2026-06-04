@@ -129,7 +129,7 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
 
     # checkpoint variables
     checkpoint_every = cfg["training"]["params"]["checkpoint_every"]
-    log_every_steps = 20
+    log_every_steps = 1
 
     # Validation params
     validate_every_steps = cfg["validation"]["params"]["validate_every_steps"]
@@ -226,6 +226,9 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
             rank, file_ids, len_weight, world_size, total_steps_per_epoch
         )
 
+        # token positions — fixed for all steps
+        token_pos = torch.arange(T, device=device)
+
         # Batchwise loop
         for b_id in range(total_steps_per_epoch):
             # get the shard for this b_id
@@ -246,8 +249,6 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                 if hasattr(tokenized_data, "_mmap"):
                     tokenized_data._mmap.close()
 
-            # token positions
-            token_pos = torch.arange(T, device=device)
             # get the learning rate
             current_lr = cs336_basics.learning_rate_schedule.learning_rate_schedule(
                 running_counter,
@@ -320,8 +321,9 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                     val_loss.append(cal_loss_val)
                     val_steps.append(running_counter)
 
-                # restore LM Mode
-                LM_DDP.train()
+            # restore train mode on all ranks after validation step
+            if running_counter % validate_every_steps == 0:
+                LM_DDP.module.train()
 
                 # Model checkpointing ( Use only rank 0)
                 if running_counter % checkpoint_every == 0:
