@@ -1,5 +1,6 @@
 import cs336_basics
 import torch
+import numpy as np
 
 
 def validate(rank, LM, val_data, cfg, device, autocast_dtype, amp_flag):
