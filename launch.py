@@ -466,12 +466,15 @@ def cmd_train(args):
 
         run_cmd(client, f"mkdir -p {REPO_DIR}/artifacts/logs {REPO_DIR}/artifacts/checkpoint")
 
+        # Launch training in background, tail log so warnings/errors are clearly separated
         train_cmd = (
             f"cd {REPO_DIR} && "
+            f"mkdir -p artifacts/logs artifacts/checkpoint && "
             f"WANDB_API_KEY={wandb_key} "
-            f".venv/bin/python -u cs336_systems/DistributedTrainingLoop.py "
+            f"nohup .venv/bin/python -u cs336_systems/DistributedTrainingLoop.py "
             f"{args.config} {args.expt_name} "
-            f"2>&1 | tee artifacts/logs/train.log"
+            f"> artifacts/logs/train.log 2>&1 & echo $! > artifacts/logs/train.pid && "
+            f"sleep 10 && tail -f artifacts/logs/train.log"
         )
         run_cmd(client, train_cmd, f"Training: {args.expt_name}")
         client.close()
