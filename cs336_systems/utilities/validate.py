@@ -50,7 +50,7 @@ def validate(rank, LM, val_data, cfg, device, autocast_dtype, amp_flag):
                         device_type=device.type, dtype=autocast_dtype, enabled=amp_flag
                     ):
                         # Run the language model
-                        logits = LM.tranform_lm_model(
+                        logits = LM.module.tranform_lm_model(
                             x,
                             rope_theta=theta,
                             token_positions=token_pos,
