@@ -480,6 +480,11 @@ def cmd_train(args):
 
     except Exception as e:
         print(f"\nERROR during training: {e}")
+        if args.keep_alive:
+            print(f"--keep-alive set. Instance {inst_id} is still running.")
+            print(f"  SSH in: ssh ubuntu@{host}")
+            print(f"  Terminate later: python launch.py terminate")
+            return
         print("Attempting to download whatever artifacts exist...")
         try:
             instances = get_instances(api_key)
@@ -488,14 +493,21 @@ def cmd_train(args):
                 download_artifacts(inst["ip"], Path(args.output_dir))
         except Exception as dl_err:
             print(f"Could not download artifacts: {dl_err}")
+    else:
+        if args.keep_alive:
+            print(f"\n--keep-alive set. Instance {inst_id} is still running.")
+            print(f"  SSH in: ssh ubuntu@{host}")
+            print(f"  Terminate later: python launch.py terminate")
+            return
     finally:
-        print(f"\nTerminating instance {inst_id}...")
-        terminate_instance(api_key, inst_id)
-        cfg.pop("active_instance_id", None)
-        cfg.pop("active_expt", None)
-        cfg.pop("active_out_dir", None)
-        save_config(cfg)
-        print("Instance terminated.")
+        if not args.keep_alive:
+            print(f"\nTerminating instance {inst_id}...")
+            terminate_instance(api_key, inst_id)
+            cfg.pop("active_instance_id", None)
+            cfg.pop("active_expt", None)
+            cfg.pop("active_out_dir", None)
+            save_config(cfg)
+            print("Instance terminated.")
 
 
 def cmd_attach(args):
@@ -540,6 +552,23 @@ def cmd_attach(args):
         print("Instance terminated.")
 
 
+def cmd_terminate(args):
+    """Terminate the active instance saved in config."""
+    api_key = init_lambda()
+    cfg = load_config()
+    inst_id = cfg.get("active_instance_id")
+    if not inst_id:
+        print("No active instance found in config.")
+        sys.exit(1)
+    print(f"Terminating instance {inst_id}...")
+    terminate_instance(api_key, inst_id)
+    cfg.pop("active_instance_id", None)
+    cfg.pop("active_expt", None)
+    cfg.pop("active_out_dir", None)
+    save_config(cfg)
+    print("Instance terminated.")
+
+
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
 def main():
@@ -571,13 +600,18 @@ def main():
     p.add_argument("--gpu-count",  type=int, default=1, choices=[1, 2, 4, 8])
     p.add_argument("--max-hours",  type=float, default=10.0)
     p.add_argument("--output-dir", default="./artifacts_remote")
+    p.add_argument("--keep-alive", action="store_true",
+                   help="Do not terminate the instance after training (useful for debugging)")
 
     # attach
     sub.add_parser("attach", help="Reconnect to existing instance, download artifacts, terminate")
 
+    # terminate
+    sub.add_parser("terminate", help="Terminate the active instance saved in config")
+
     args = parser.parse_args()
     {"setup": cmd_setup, "gpus": cmd_gpus, "datacenters": cmd_datacenters,
-     "train": cmd_train, "attach": cmd_attach}[args.command](args)
+     "train": cmd_train, "attach": cmd_attach, "terminate": cmd_terminate}[args.command](args)
 
 
 if __name__ == "__main__":
