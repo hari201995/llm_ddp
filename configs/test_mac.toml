@@ -1,0 +1,49 @@
+# test config for local mac run
+[training.params]
+epochs = 1
+steps_per_epoch = 10
+batch_size = 2
+alpha_max = 0.003
+alpha_min = 0.0003
+warmup_iter = 2
+theta = 10000
+cooldown_iter = 8
+checkpoint_every = 5
+world_size = 1
+
+[data.params]
+path = "/Users/hari/Documents/cs_336/assignment2-systems/model/owt_train_token_out/"
+tag = "shard_"
+num_shards = 5
+
+[model]
+name = "cs336_basics.TransformerLM.TransformerLM"
+
+[model.params]
+vocab_size = 32000
+context_length = 64
+num_layers = 2
+d_model = 128
+num_heads = 4
+d_ff = 256
+device = "cpu"
+
+[optimizer]
+name = "cs336_basics.adamW.AdamW"
+
+[optimizer.params]
+lr = 0.01
+weight_decay = 0.01
+betas = [0.9, 0.95]
+eps = 1e-8
+
+[validation.params]
+validate_every_steps = 5
+vocab = "/Users/hari/Documents/cs_336/assignment2-systems/owt_bpe/owt_vocab.pkl"
+num_tries = 1
+
+[validation.data]
+path = "/Users/hari/Documents/cs_336/assignment2-systems/model/owt_train_token_out/"
+tag = "shard_"
+num_shards = 2
+shard_offset = 3
