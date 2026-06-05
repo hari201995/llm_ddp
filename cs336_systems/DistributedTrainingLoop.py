@@ -192,9 +192,8 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
     if rank == 0:
         log.info("Initializing wandb")
         run = wandb.init(
-            # Set the wandb project where this run will be logged.
             project="llm_train_project",
-            # Track hyperparameters and run metadata.
+            mode="offline",
             config={
                 "learning_rate": alpha_max,
                 "architecture": model_name,
