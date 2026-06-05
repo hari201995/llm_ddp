@@ -472,7 +472,7 @@ def cmd_train(args):
         train_cmd = (
             f"mkdir -p {REPO_DIR}/artifacts/logs {REPO_DIR}/artifacts/checkpoint && "
             f"cd {REPO_DIR} && "
-            f"WANDB_API_KEY={wandb_key} WANDB_MODE=online "
+            f"WANDB_API_KEY={wandb_key} WANDB_MODE=offline "
             f"nohup .venv/bin/python -u cs336_systems/DistributedTrainingLoop.py "
             f"{args.config} {args.expt_name} "
             f"> {log_file} 2>&1 & echo $! > {pid_file} && "
