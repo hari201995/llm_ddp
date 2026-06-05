@@ -10,6 +10,31 @@ import pickle
 import random
 from itertools import islice, pairwise
 from collections import Counter, defaultdict
+import heapq
+
+
+class _Rev:
+    """Reverses comparison so min-heap behaves like max on the wrapped value."""
+
+    __slots__ = ("val",)
+
+    def __init__(self, val):
+        self.val = val
+
+    def __lt__(self, o):
+        return self.val > o.val
+
+    def __le__(self, o):
+        return self.val >= o.val
+
+    def __gt__(self, o):
+        return self.val < o.val
+
+    def __ge__(self, o):
+        return self.val <= o.val
+
+    def __eq__(self, o):
+        return self.val == o.val
 
 
 def chunk_dict(data, size):
@@ -137,8 +162,8 @@ def train_bpe_fn(file_path, vocab_size, special_tkn_ip):
     random.seed(42)
     print("\n in train bpe function")
     num_processes = 8
-    coarse_chunk_count = 20
-    fine_chunk_count = 20
+    coarse_chunk_count = 500
+    fine_chunk_count = 500
     V = dict()
     # Add the special characters to vocab.
     for i in range(len(special_tkn_ip)):
@@ -153,12 +178,14 @@ def train_bpe_fn(file_path, vocab_size, special_tkn_ip):
 
         # use sample indices to generate boundaries. sample indices will be [1,4,8,10 etc]
         # choose WHICH chunks to read
-        sample_indices = sorted(
-            random.sample(range(len(boundaries) - 1), fine_chunk_count)
-        )
-
-        # (start, end) for ONLY the sampled chunks
-        boundary_gen = [(boundaries[i], boundaries[i + 1]) for i in sample_indices]
+        available = len(boundaries) - 1
+        if available <= fine_chunk_count:
+            boundary_gen = [
+                (boundaries[i], boundaries[i + 1]) for i in range(available)
+            ]
+        else:
+            sample_indices = sorted(random.sample(range(available), fine_chunk_count))
+            boundary_gen = [(boundaries[i], boundaries[i + 1]) for i in sample_indices]
 
         # create a single argument partial function so that we can use map
         worker_fn = partial(pre_tokenize, special_tkn=special_tkn_ip)
@@ -192,13 +219,24 @@ def train_bpe_fn(file_path, vocab_size, special_tkn_ip):
                 pairs_keys_dict[pairs].add(hash_)
             hash_ += 1
 
+        heap = []
+        for p_name, count in adjacent_pair_dict.items():
+            heapq.heappush(
+                heap,
+                (-count, _Rev(flatten(p_name[0])), _Rev(flatten(p_name[1])), p_name),
+            )
+
         # Global merge happens here
         while len(V.keys()) < vocab_size:
             # Find max key
-            max_key = max(
-                adjacent_pair_dict,
-                key=lambda p: (adjacent_pair_dict[p], flatten(p[0]), flatten(p[1])),
-            )
+            neg_count, _, _, max_key = heapq.heappop(heap)
+            while True:
+                val = adjacent_pair_dict.get(max_key, 0)
+                if val == -1 * neg_count:
+                    break
+                else:
+                    neg_count, _, _, max_key = heapq.heappop(heap)
+
             # find the sequences which max_key appears. list of seq id's.
             # Loop through all keys where the merge has to be done in pre_token_dict
             change_seq = pairs_keys_dict.pop(max_key, set())
@@ -249,6 +287,20 @@ def train_bpe_fn(file_path, vocab_size, special_tkn_ip):
                         difference_[c] = pre_token_freq * (diff_pair)
 
                 adjacent_pair_dict.update(difference_)
+                # just push those onto heap
+                for p_name, delta in difference_.items():
+                    new_count = adjacent_pair_dict.get(p_name, 0)
+                    if new_count > 0:
+                        heapq.heappush(
+                            heap,
+                            (
+                                -new_count,
+                                _Rev(flatten(p_name[0])),
+                                _Rev(flatten(p_name[1])),
+                                p_name,
+                            ),
+                        )
+
                 # Update the pairs - keys dict
                 # Add new pair in pairs-keys dict
                 for oldies in set(old_pairs):
@@ -263,11 +315,6 @@ def train_bpe_fn(file_path, vocab_size, special_tkn_ip):
                 for newbie in set(new_pairs):
                     # This is new key. Add this to the pairs_keys_dict.
                     pairs_keys_dict[newbie].add(p)
-
-            # remove 0 entries.
-            for k, _ in list(adjacent_pair_dict.items()):
-                if adjacent_pair_dict[k] <= 0:
-                    adjacent_pair_dict.pop(k)
 
             # Init freq dict every time I run merge
             max_key_bytes = tuple_to_bytes(max_key)
@@ -285,17 +332,20 @@ def train_bpe_fn(file_path, vocab_size, special_tkn_ip):
                 print("\n length of vocab - ", len(V))
 
     merge_list = convert_merges(merge_list)
-    # Save to JSON file
-    with open("tiny_stories_train_vocab.pkl", "wb") as f:
-        pickle.dump(V, f)
-
-    with open("tiny_stories_train_merges.pkl", "wb") as f:
-        pickle.dump(merge_list, f)
     return V, merge_list
 
 
 if __name__ == "__main__":
-    file_name = "data/TinyStoriesV2-GPT4-valid.txt"
+    import os
+
+    file_name = "/Users/hari/Documents/cs_336/assignment1-basics/data/TinyStoriesV2-GPT4-train.txt"
     num_cores = mp.cpu_count()
     print(f"Number of logical CPU cores: {num_cores}")
-    train_bpe_fn(file_name, 10000, ["<|endoftext|>"])
+    vocab, merges = train_bpe_fn(file_name, 32000, ["<|endoftext|>"])
+    out_dir = os.path.join(os.path.dirname(__file__), "../../../tokenizer")
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "owt_vocab.pkl"), "wb") as f:
+        pickle.dump(vocab, f)
+    with open(os.path.join(out_dir, "owt_merges.pkl"), "wb") as f:
+        pickle.dump(merges, f)
+    print("Saved to tokenizer/owt_vocab.pkl and tokenizer/owt_merges.pkl")

@@ -31,8 +31,8 @@ import requests
 
 # ── project constants ──────────────────────────────────────────────────────────
 REPO_URL         = "https://github.com/hari201995/llm_ddp.git"
-LOCAL_TRAIN_DATA = Path("/Users/hari/Documents/backups/tiny_stories_train_token_out")
-LOCAL_VALID_DATA = Path("/Users/hari/Documents/backups/tiny_stories_valid_token_out")
+LOCAL_TRAIN_DATA = Path("/Users/hari/Documents/backups/owt_train_token_out")
+LOCAL_VALID_DATA = Path("/Users/hari/Documents/backups/owt_valid_token_out")
 DATA_MOUNT_BASE  = "/home/ubuntu"   # Lambda mounts filesystems at /home/ubuntu/<fs-name>
 REPO_DIR         = "/home/ubuntu/llm_ddp"
 SSH_USERNAME     = "ubuntu"                   # Lambda uses ubuntu, not root

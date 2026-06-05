@@ -62,7 +62,9 @@ class Tokenizer:
 
         final_token = []
         specials = self.spl_tkn  # extend if you have more
-        if not self.test_mode:
+        if isinstance(boundary_tup, str):
+            text = boundary_tup
+        elif not self.test_mode:
             if boundary_tup is not None:
                 # read the file
                 if self.file_name != None:
@@ -164,7 +166,7 @@ class Tokenizer:
                             for v in temp_str:
                                 final_token.append(reverse_dict[v])
                             break
-        if not self.test_mode:
+        if not self.test_mode and not isinstance(boundary_tup, str):
             as_array = np.asarray(final_token, dtype=np.uint16)
             bin_file = self.output_loc + "/shard_" + str(shard_idx) + ".bin"  # type: ignore
             as_array.tofile(bin_file)
@@ -187,34 +189,30 @@ class Tokenizer:
 
 
 if __name__ == "__main__":
-    file_name = "data/TinyStoriesV2-GPT4-valid.txt"
-    file_size = os.path.getsize(file_name)
-    total_batches = 10
-    output_folder = "tiny_stories_valid_token_out"
+    file_name = "/Users/hari/Documents/backups/Datasets/owt_train.txt"
+    total_batches = 100
+    output_folder = "owt_train_token_out"
 
-    # create a folder for token output. # change in line 203 also.
     os.makedirs(output_folder, mode=0o755, exist_ok=True)
 
     with open(file_name, "rb") as f:
         boundaries = find_chunk_boundaries(f, total_batches, b"<|endoftext|>")
-        # (start, end) for ONLY the sampled chunks
         boundary_gen = [
             (i, boundaries[i], boundaries[i + 1]) for i in range(len(boundaries) - 1)
         ]
-    # create a single argument partial function so that we can use map
     print("Going to process")
     with mp.Pool(
-        processes=1,
+        processes=8,
         initializer=Tokenizer.init_worker,
         initargs=(
-            "tiny_stories_train_vocab.pkl",
-            "tiny_stories_train_merges.pkl",
+            "../tokenizer/owt_vocab.pkl",
+            "../tokenizer/owt_merges.pkl",
             ["<|endoftext|>"],
             file_name,
             output_folder,
         ),
     ) as pool:
         for shard in pool.imap_unordered(
-            Tokenizer.encode_worker, boundary_gen, chunksize=64
+            Tokenizer.encode_worker, boundary_gen, chunksize=4
         ):
             print("done : ", shard)

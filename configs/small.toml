@@ -12,9 +12,9 @@ checkpoint_every = 5000
 world_size = 1
 
 [data.params]
-path = "tiny_stories_train_token_out/"
+path = "/home/ubuntu/llm-ddp/owt_train_token_out/"
 tag = "shard_"
-num_shards = 100
+num_shards = 90
 
 [model]
 name = "cs336_basics.TransformerLM.TransformerLM"
@@ -40,10 +40,11 @@ eps = 1e-8
 [validation.params]
 # make sure validate every steps is N* checkpoint every steps
 validate_every_steps = 500
-vocab = "tokenizer/tiny_stories_train_vocab.pkl"
+vocab = "/home/ubuntu/llm-ddp/owt_bpe/owt_vocab.pkl"
 num_tries = 3
 
 [validation.data]
-path = "tiny_stories_valid_token_out"
+path = "/home/ubuntu/llm-ddp/owt_train_token_out/"
 tag = "shard_"
 num_shards = 10
+shard_offset = 90

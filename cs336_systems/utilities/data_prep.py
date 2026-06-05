@@ -19,6 +19,7 @@ def data_prep(cfg):
     validation_data_path = cfg["validation"]["data"]["path"]
     validation_data_tag = cfg["validation"]["data"]["tag"]
     validation_num_shards = cfg["validation"]["data"]["num_shards"]
+    validation_shard_offset = cfg["validation"]["data"].get("shard_offset", 0)
 
     ##########################
     # Training data preparation
@@ -46,7 +47,7 @@ def data_prep(cfg):
     val_shard_paths = []
     for d in range(validation_num_shards):
         file_pattern = os.path.join(
-            validation_data_path, f"{validation_data_tag}{offset_file + d}.bin"
+            validation_data_path, f"{validation_data_tag}{validation_shard_offset + d}.bin"
         )
         val_shard_paths.append(file_pattern)
 
