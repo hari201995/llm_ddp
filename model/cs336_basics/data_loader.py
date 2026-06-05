@@ -69,25 +69,17 @@ def data_loader(x, batch_size, context_length, device_type=None):
             device = torch.device("cpu")
     else:
         device = torch.device(device_type)
+
     # Convert x to numpy, put it in device and ensure they are
     # in contiguous memory
-    x = (
-        torch.as_tensor(np.array(x, copy=True), dtype=torch.long)
-        .to(device)
-        .contiguous()
-    )
-    # generate 32 different starts from all possible indices.
-    # Available indices is len(x) - context_length
-    strt_idx = torch.randperm(len(x) - context_length, device=device)
-    strt_idx = strt_idx[:batch_size]
-    tgt_strt = strt_idx + 1
+    max_start = len(x) - context_length - 1
+    starts = np.random.randint(0, max_start, size=batch_size)
 
-    context_array = torch.arange(context_length, device=device)
-    slice_idx_d = strt_idx[:, None] + context_array[None, :]
-    slice_idx_t = tgt_strt[:, None] + context_array[None, :]
+    inp = np.stack([x[s : s + context_length] for s in starts]).astype(np.int64)
+    tgt = np.stack([x[s + 1 : s + context_length + 1] for s in starts]).astype(np.int64)
 
-    y = x[slice_idx_d].to(device)
-    t = x[slice_idx_t].to(device)
+    y = torch.from_numpy(inp).to(device)
+    t = torch.from_numpy(tgt).to(device)
     return y, t
 
 
