@@ -189,7 +189,7 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
     ##########################
     # weights & biases for training
     ##########################
-    if rank == 0:
+    if rank == 0 and False:
         log.info("Initializing wandb")
         run = wandb.init(
             project="llm_train_project",
@@ -354,21 +354,7 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                     log.info(f"step={running_counter} loss={loss.item():.4f}\
                             lr={current_lr:.3e} val_loss={last_val}")
 
-                    # wandb counter
-                    log_dict_wandb = {
-                        "train_loss": loss.item(),
-                        "ema_loss": ema_ce_loss[-1],
-                        "lr": current_lr,
-                    }
-
-                    if val_loss != []:
-                        log_dict_wandb["val_loss"] = last_val
-
-                    # log the loss in W&B
-                    run.log(
-                        log_dict_wandb,
-                        step=running_counter,
-                    )
+                    pass
                     if loss.item() < 1.8:
                         stop_tensor[0] = 1
 
@@ -427,9 +413,7 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
         # Also print final values
         print(f"Final loss: {ce_loss[-1]:.4f}")
         log.info("Training complete")
-        # complete wandb
-        run.log({"loss_curve": wandb.Image("artifacts/logs/loss.png")})
-        run.finish()
+        pass
 
 
 def main():
