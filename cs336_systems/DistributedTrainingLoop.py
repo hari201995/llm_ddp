@@ -189,11 +189,10 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
     ##########################
     # weights & biases for training
     ##########################
-    if rank == 0 and False:
+    if rank == 0:
         log.info("Initializing wandb")
         run = wandb.init(
             project="llm_train_project",
-            mode="offline",
             config={
                 "learning_rate": alpha_max,
                 "architecture": model_name,
@@ -271,7 +270,7 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                 device_type=device.type, dtype=autocast_dtype, enabled=amp_flag
             ):
                 # Run the language model
-                y = LM_DDP.module.tranform_lm_model(
+                y = LM_DDP.module.tranform_lm_model(  # type: ignore
                     x,
                     rope_theta=theta,
                     token_positions=token_pos[: x.size(1)],
@@ -325,7 +324,7 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                 LM_DDP.module.train()
 
                 # Model checkpointing ( Use only rank 0)
-                if running_counter % checkpoint_every == 0:
+                if rank == 0 and running_counter % checkpoint_every == 0:
                     pkg = {
                         "model_state": LM.state_dict(),
                         "optimizer_state": O_Shard.state_dict(),
@@ -338,25 +337,24 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                     os.makedirs("artifacts/checkpoint", exist_ok=True)
                     torch.save(pkg, latest_checkpoint)
 
-                # Computing and Logging CE loss
+            # Computing and Logging CE loss
+            if rank == 0 and running_counter % log_every_steps == 0:
+                ce_loss.append(loss.item())
+                if ema_ce_loss != []:
+                    curr_ema = 0.8 * ema_ce_loss[-1] + 0.2 * loss.item()
+                    ema_ce_loss.append(curr_ema)
+                else:
+                    ema_ce_loss.append(loss.item())
 
-                if running_counter % log_every_steps == 0:
-                    # add the loss in ce_loss for plot
-                    ce_loss.append(loss.item())
-                    if ema_ce_loss != []:
-                        curr_ema = 0.8 * ema_ce_loss[-1] + 0.2 * loss.item()
-                        ema_ce_loss.append(curr_ema)
-                    else:
-                        ema_ce_loss.append(loss.item())
+                last_val = val_loss[-1] if val_loss else float("nan")
+                log.info(
+                    f"step={running_counter} loss={loss.item():.4f} "
+                    f"lr={current_lr:.3e} val_loss={last_val}"
+                )
+                run.log({"train_loss": loss.item(), "lr": current_lr, "val_loss": last_val, "step": running_counter})
 
-                    last_val = val_loss[-1] if val_loss else float("nan")
-
-                    log.info(f"step={running_counter} loss={loss.item():.4f}\
-                            lr={current_lr:.3e} val_loss={last_val}")
-
-                    pass
-                    if loss.item() < 1.8:
-                        stop_tensor[0] = 1
+                if loss.item() < 1.8:
+                    stop_tensor[0] = 1
 
             if running_counter % validate_every_steps == 0:
                 # stall others until validation is done
@@ -413,7 +411,7 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
         # Also print final values
         print(f"Final loss: {ce_loss[-1]:.4f}")
         log.info("Training complete")
-        pass
+        run.finish()
 
 
 def main():
