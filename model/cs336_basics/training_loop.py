@@ -15,6 +15,7 @@ from cs336_basics import learning_rate_schedule
 from cs336_basics import data_loader
 from cs336_basics import cross_entropy_loss
 from cs336_basics import gradient_clip
+from cs336_basics.create_obj import create_obj
 
 
 def dump_config(cfg_dict):
@@ -155,7 +156,7 @@ def training_loop(config, expt_name):
     )
 
     # Create model object
-    LM = create_obj(cfg, field="model")
+    LM = create_obj(cfg, field="model", extra_kwargs={"theta": theta})
 
     # set the device properly
     if LM.device.type == "cuda":
@@ -400,27 +401,6 @@ def training_loop(config, expt_name):
     # complete wandb
     run.log({"loss_curve": wandb.Image("artifacts/logs/loss.png")})
     run.finish()
-
-
-def create_obj(cfg, field, addtl_params=None):
-    class_path = cfg[field]["name"]
-    cls_params = cfg[field]["params"]
-
-    # Split path into module and class
-    module_name, class_name = class_path.rsplit(".", 1)
-
-    # Dynamically import module
-    mod = importlib.import_module(module_name)
-
-    # Add config params
-    if addtl_params != None:
-        # this is mainly for handling optimizer
-        cls_params["params"] = addtl_params
-
-    # Retrieve class object from module
-    cls = getattr(mod, class_name)
-    obj = cls(**cls_params)
-    return obj
 
 
 def get_args():

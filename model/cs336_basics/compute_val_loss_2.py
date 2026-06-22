@@ -1,21 +1,10 @@
 import argparse
-import importlib
 import os
 import numpy as np
 import torch
 
 from cs336_basics import data_loader, cross_entropy_loss
-
-
-def create_obj(cfg, field, addtl_params=None):
-    class_path = cfg[field]["name"]
-    cls_params = cfg[field]["params"]
-    module_name, class_name = class_path.rsplit(".", 1)
-    mod = importlib.import_module(module_name)
-    if addtl_params is not None:
-        cls_params["params"] = addtl_params
-    cls = getattr(mod, class_name)
-    return cls(**cls_params)
+from cs336_basics.create_obj import create_obj
 
 
 def load_model_from_checkpoint(ckpt_path, device):
@@ -29,7 +18,9 @@ def load_model_from_checkpoint(ckpt_path, device):
         raise ValueError("Checkpoint does not contain a 'config' field")
 
     # Build model from this config
-    LM = create_obj(cfg, field="model")
+    LM = create_obj(
+        cfg, field="model", extra_kwargs={"theta": cfg["training"]["params"]["theta"]}
+    )
     LM = LM.to(device)
     LM.device = device  # ensure downstream modules use the actual runtime device
 

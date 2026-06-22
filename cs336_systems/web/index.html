@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vaad</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; }
+  #prompt { width: 100%; box-sizing: border-box; font-size: 16px; padding: 8px; }
+  #response { white-space: pre-wrap; margin-top: 16px; padding: 12px; border: 1px solid #ccc;
+              border-radius: 6px; min-height: 60px; }
+  #status { color: #888; font-size: 14px; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <h2>Vaad</h2>
+  <input id="prompt" type="text" placeholder="Type a prompt and press Enter..." autofocus>
+  <div id="status"></div>
+  <div id="response"></div>
+
+<script>
+  const promptBox = document.getElementById("prompt");
+  const responseBox = document.getElementById("response");
+  const statusBox = document.getElementById("status");
+
+  promptBox.addEventListener("keydown", async (e) => {
+    if (e.key !== "Enter") return;
+    const text = promptBox.value.trim();
+    if (!text) return;
+
+    promptBox.disabled = true;
+    statusBox.textContent = "Generating...";
+    responseBox.textContent = "";
+
+    try {
+      const res = await fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      responseBox.textContent = data.response ?? data.error ?? "(no response)";
+    } catch (err) {
+      responseBox.textContent = "Error: " + err;
+    } finally {
+      statusBox.textContent = "";
+      promptBox.disabled = false;
+      promptBox.focus();
+    }
+  });
+</script>
+</body>
+</html>

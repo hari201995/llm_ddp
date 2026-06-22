@@ -16,6 +16,7 @@ import json
 import cs336_basics
 import logging_setup
 import time
+from cs336_systems.utilities.create_obj import create_obj
 
 
 def dump_config(cfg_dict, log):
@@ -80,34 +81,6 @@ def rationalize_device(rank, LM):
         amp_flag = False
 
     return device, autocast_dtype, amp_flag
-
-
-def create_obj(cfg, field, addtl_params=None):
-    """
-    Docstring for create_obj
-
-    :param cfg: Description
-    :param field: Description
-    :param addtl_params: Description
-    """
-    class_path = cfg[field]["name"]
-    cls_params = cfg[field]["params"]
-
-    # Split path into module and class
-    module_name, class_name = class_path.rsplit(".", 1)
-
-    # Dynamically import module
-    mod = importlib.import_module(module_name)
-
-    # Add config params
-    if addtl_params != None:
-        # this is mainly for handling optimizer
-        cls_params["params"] = addtl_params
-
-    # Retrieve class object from module
-    cls = getattr(mod, class_name)
-    obj = cls(**cls_params)
-    return obj
 
 
 def data_prep(cfg):
@@ -236,7 +209,6 @@ def validate(rank, LM, val_data, cfg, device, autocast_dtype, amp_flag):
                             x,
                             rope_theta=theta,
                             token_positions=token_pos,
-                            max_seq_len=x.size(1),
                         )
 
                         # compute entropy loss
@@ -312,7 +284,7 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
     ##########################
     # Create model object
     ##########################
-    LM = create_obj(cfg, field="model")
+    LM = create_obj(cfg, field="model", extra_kwargs={"theta": theta})
 
     ##########################
     # set the device properly
@@ -447,7 +419,6 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                         x,
                         rope_theta=theta,
                         token_positions=token_pos[: x.size(1)],
-                        max_seq_len=x.size(1),
                     )
                     loss = cs336_basics.cross_entropy_loss.cross_entropy_loss(y, target)
 

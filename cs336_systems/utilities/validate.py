@@ -54,7 +54,6 @@ def validate(rank, LM, val_data, cfg, device, autocast_dtype, amp_flag):
                             x,
                             rope_theta=theta,
                             token_positions=token_pos,
-                            max_seq_len=x.size(1),
                         )
 
                         # compute entropy loss

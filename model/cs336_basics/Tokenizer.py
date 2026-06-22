@@ -11,6 +11,7 @@ import math
 
 # from train_bpe import train_bpe_fn
 class Tokenizer:
+
     _worker_singleton = None
 
     def __init__(
@@ -189,6 +190,19 @@ class Tokenizer:
 
 
 if __name__ == "__main__":
+    '''
+    boundary_gen (the list of (idx, start_byte, end_byte) tuples) — this is the cheap, stateless 
+    per-task data. It's computed once in the main process via find_chunk_boundaries, then 
+    pool.imap_unordered ships one small tuple per task. Cheap to pickle, cheap to send.
+    - The Tokenizer singleton — this is the opposite: it's stateful (holds V, merge_lst, merge_rank).
+    It's expensive to build (disk read + unpickle + build merge_rankdict), so you build it once
+    per worker via init_worker, and every task in that worker's loop reuses the same stateful 
+    object instead of rebuilding it.
+
+    cheap, stateless, varies per call  →  boundary_tup, sent fresh each task
+    expensive, stateful, fixed         →  Tokenizer singleton, built once, reused every task
+    '''
+    
     file_name = "/Users/hari/Documents/backups/Datasets/owt_train.txt"
     total_batches = 100
     output_folder = "owt_train_token_out"

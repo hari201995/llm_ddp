@@ -48,3 +48,12 @@ path = "/home/ubuntu/llm-ddp/owt_train_token_out/"
 tag = "shard_"
 num_shards = 10
 shard_offset = 90
+
+[inference]
+device = "mps"
+path = "world_1_small_15k_owt/checkpoint/iter_15000.pt"
+vocab = "owt_bpe/owt_vocab.pkl"
+merges = "owt_bpe/owt_merges.pkl"
+max_batch = 1
+top_p = 0.75
+temp = 0.8

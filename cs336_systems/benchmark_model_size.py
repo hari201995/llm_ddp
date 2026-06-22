@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 
 import cs336_basics
+from cs336_systems.utilities.create_obj import create_obj
 
 
 def benchmark_model(config, benchmark_mode, benchmark_warmup_iter, expt_name):
@@ -48,7 +49,7 @@ def benchmark_model(config, benchmark_mode, benchmark_warmup_iter, expt_name):
     num_cosine_iter = cfg["training"]["params"]["cooldown_iter"]
 
     # Create model object
-    LM = create_obj(cfg, field="model")
+    LM = create_obj(cfg, field="model", extra_kwargs={"theta": theta})
 
     # set the device properly
     if LM.device.type == "cuda":
@@ -152,7 +153,6 @@ def benchmark_model(config, benchmark_mode, benchmark_warmup_iter, expt_name):
                     x,
                     rope_theta=theta,
                     token_positions=token_pos[: x.size(1)],
-                    max_seq_len=x.size(1),
                 )
                 loss = cs336_basics.cross_entropy_loss.cross_entropy_loss(y, target)
             # log end timer if only forward is being profiled.
@@ -183,27 +183,6 @@ def benchmark_model(config, benchmark_mode, benchmark_warmup_iter, expt_name):
         current_epoch += 1
 
     log.info(f"Result : Total Time is {sum(time_list)/len(time_list)} for {expt_name}")
-
-
-def create_obj(cfg, field, addtl_params=None):
-    class_path = cfg[field]["name"]
-    cls_params = cfg[field]["params"]
-
-    # Split path into module and class
-    module_name, class_name = class_path.rsplit(".", 1)
-
-    # Dynamically import module
-    mod = importlib.import_module(module_name)
-
-    # Add config params
-    if addtl_params != None:
-        # this is mainly for handling optimizer
-        cls_params["params"] = addtl_params
-
-    # Retrieve class object from module
-    cls = getattr(mod, class_name)
-    obj = cls(**cls_params)
-    return obj
 
 
 def get_args():

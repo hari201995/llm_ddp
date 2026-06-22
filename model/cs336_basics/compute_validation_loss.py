@@ -1,5 +1,4 @@
 import tomllib
-import importlib
 import numpy as np
 import os
 import torch
@@ -11,6 +10,7 @@ import torch.nn.functional as F
 from cs336_basics import data_loader
 from cs336_basics import cross_entropy_loss
 from cs336_basics import checkpoint_utils
+from cs336_basics.create_obj import create_obj
 
 
 @torch.inference_mode()
@@ -39,7 +39,7 @@ def compute_validation_loss(checkpoint, config):
     theta = cfg["training"]["params"]["theta"]
 
     # Define model params.
-    LM = create_obj(cfg, field="model")
+    LM = create_obj(cfg, field="model", extra_kwargs={"theta": theta})
 
     # set the device properly
     if LM.device.type == "cuda":
@@ -143,26 +143,6 @@ def compute_validation_loss(checkpoint, config):
     print(f"Final loss: {sum(ce_loss) / len(ce_loss):.4f}")
     return sum(ce_loss) / len(ce_loss)
 
-
-def create_obj(cfg, field, addtl_params=None):
-    class_path = cfg[field]["name"]
-    cls_params = cfg[field]["params"]
-
-    # Split path into module and class
-    module_name, class_name = class_path.rsplit(".", 1)
-
-    # Dynamically import module
-    mod = importlib.import_module(module_name)
-
-    # Add config params
-    if addtl_params != None:
-        # this is mainly for handling optimizer
-        cls_params["params"] = addtl_params
-
-    # Retrieve class object from module
-    cls = getattr(mod, class_name)
-    obj = cls(**cls_params)
-    return obj
 
 
 def get_args():

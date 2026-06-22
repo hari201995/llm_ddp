@@ -149,7 +149,9 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
     ##########################
     # Create model object
     ##########################
-    LM = utilities.create_obj(cfg, field="model")
+    LM = utilities.create_obj(
+        cfg, field="model", extra_kwargs={"theta": cfg["training"]["params"]["theta"]}
+    )
 
     ##########################
     # set the device properly
@@ -274,7 +276,6 @@ def distributed_training_loop(rank, expt_name, world_size, cfg):
                     x,
                     rope_theta=theta,
                     token_positions=token_pos[: x.size(1)],
-                    max_seq_len=x.size(1),
                 )
                 loss = cs336_basics.cross_entropy_loss.cross_entropy_loss(y, target)
 

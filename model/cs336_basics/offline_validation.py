@@ -1,5 +1,4 @@
 import argparse
-import importlib
 import os
 import re
 import numpy as np
@@ -7,24 +6,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from cs336_basics import data_loader, cross_entropy_loss
-
-
-def create_obj(cfg, field, addtl_params=None):
-    """
-    Create an object from a dotted class path in cfg[field]["name"]
-    with kwargs in cfg[field]["params"].
-    """
-    class_path = cfg[field]["name"]
-    cls_params = cfg[field]["params"]
-
-    module_name, class_name = class_path.rsplit(".", 1)
-    mod = importlib.import_module(module_name)
-
-    if addtl_params is not None:
-        cls_params["params"] = addtl_params
-
-    cls = getattr(mod, class_name)
-    return cls(**cls_params)
+from cs336_basics.create_obj import create_obj
 
 
 def load_model_from_checkpoint(ckpt_path, device):
@@ -42,7 +24,9 @@ def load_model_from_checkpoint(ckpt_path, device):
     cfg = obj["config"]
 
     # Build model from config
-    LM = create_obj(cfg, field="model").to(device)
+    LM = create_obj(
+        cfg, field="model", extra_kwargs={"theta": cfg["training"]["params"]["theta"]}
+    ).to(device)
 
     # Clean state dict keys
     state = obj.get("model_state", obj)

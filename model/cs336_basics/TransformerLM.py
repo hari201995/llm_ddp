@@ -26,7 +26,9 @@ class TransformerLM(nn.Module):
         d_model,
         num_heads,
         d_ff,
+        theta,
         device=None,
+        kv_cache=None,
     ):
         super().__init__()
         if device == "cuda":
@@ -42,8 +44,18 @@ class TransformerLM(nn.Module):
         # Define transformer
         self.Tr = nn.ModuleList(
             [
-                Transformer.Transformer(d_model, num_heads, d_ff, device=self.device)
-                for _ in range(num_layers)
+                Transformer.Transformer(
+                    d_model,
+                    num_heads,
+                    d_ff,
+                    theta,
+                    device=self.device,
+                    seq_len=context_length,
+                    layer=l,
+                    max_batches=10,
+                    kv_cache=kv_cache,  # type: ignore
+                )
+                for l in range(num_layers)
             ]
         )
         # Define post transformer norm
@@ -53,15 +65,19 @@ class TransformerLM(nn.Module):
         # Define Embedding layer
         self.E = Embedding.Embedding(vocab_size, d_model, device=self.device)
 
-    def tranform_lm_model(self, x, rope_theta, token_positions, max_seq_len):
+    def tranform_lm_model(self, x, rope_theta, token_positions):
+        """
+        Runs the language model for N layers -> Post Norm -> FFN
+        Has support for KV cache via k_mem and v_mem.
+        """
         # Run embedding module
         t_in = self.E.forward(x, self.device)
+
         for l in range(self.num_layers):
             y = self.Tr[l].transform(
                 t_in,
                 theta=rope_theta,
                 token_positions=token_positions,
-                max_seq_len=max_seq_len,
                 device=self.device,
             )  # pyright: ignore[reportCallIssue]
             t_in = y
