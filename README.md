@@ -57,9 +57,11 @@ Python 3.12.10 (main, Apr  9 2025, 04:03:51) [Clang 20.1.0 ] on linux
 
 `uv run` installs dependencies automatically as dictated in the `pyproject.toml` file.
 
-## Lambda Labs Training Launcher
+## Training Launcher (Lambda Labs / RunPod)
 
-`launch.py` automates the full training workflow on Lambda Labs — from provisioning a GPU instance to downloading weights — without touching the Lambda Labs website.
+`launch.py` automates the full training workflow — from provisioning a GPU instance to downloading weights — without touching either provider's website.
+
+Every command takes `--provider {lambda,runpod}` (default `lambda`), so all the Lambda Labs instructions below work unchanged. See [RunPod](#runpod) further down for the second provider.
 
 ### Prerequisites
 
@@ -73,13 +75,23 @@ Make sure your GitHub SSH key is configured (`ssh -T git@github.com` should say 
 
 ### Commands
 
-#### 1. Check GPU availability (do this first)
+#### 1. Check GPU availability and pricing (do this first)
 
 ```sh
-python launch.py datacenters --gpu-type a100
+python launch.py gpus --gpu-type a100
 ```
 
-Shows which regions have your target GPU available and the hourly price.
+For Lambda, this is the one command you need — price and which regions have
+capacity, together in one table. Omit `--gpu-type` to list everything.
+
+**RunPod's equivalent one-stop command is different** (see [RunPod](#runpod)
+below for why) — use `datacenters --gpu-type a100 --provider runpod` instead of
+`gpus` there.
+
+To narrow Lambda down to a single region, add `--datacenter-id` (substring match):
+```sh
+python launch.py gpus --gpu-type a100 --datacenter-id us-east-1
+```
 
 > **Important:** Your persistent filesystem and GPU instance must be in the same region.
 
@@ -99,15 +111,7 @@ python launch.py setup --filesystem-name LM336
 
 Only run this once. Data lives on the filesystem permanently.
 
-#### 3. Check GPU pricing
-
-```sh
-python launch.py gpus
-```
-
-Lists all available instance types with hourly price and regions that have capacity.
-
-#### 4. Launch a training run
+#### 3. Launch a training run
 
 ```sh
 python launch.py train --expt-name run1 --gpu-type a100 --gpu-count 1 --max-hours 8
@@ -136,7 +140,7 @@ Option            Default                    Description
 --keep-alive      false                      Keep instance running after training ends or fails
 ```
 
-#### 5. Reconnect to an existing run
+#### 4. Reconnect to an existing run
 
 If your Mac disconnects mid-training:
 
@@ -146,7 +150,7 @@ python launch.py attach
 
 Reconnects to the running instance, optionally waits for training to finish, downloads artifacts, and terminates.
 
-#### 6. Terminate instance manually
+#### 5. Terminate instance manually
 
 If you used `--keep-alive` or need to force-terminate:
 
@@ -160,12 +164,12 @@ Terminates the active instance saved in `~/.llm_ddp_lambda.json`.
 
 ```sh
 # First time only
-python launch.py datacenters --gpu-type a100
+python launch.py gpus --gpu-type a100
 # → create filesystem in Lambda dashboard, then:
 python launch.py setup --filesystem-name LM336
 
 # Every training run
-python launch.py gpus                               # check availability and pricing
+python launch.py gpus --gpu-type a100               # check availability and pricing
 python launch.py train --expt-name run1 \
     --gpu-type a100 --gpu-count 1 --max-hours 8
 
@@ -173,6 +177,141 @@ python launch.py train --expt-name run1 \
 python launch.py train --expt-name run1 --keep-alive ...
 ssh ubuntu@<ip-shown-in-output>
 python launch.py terminate                          # when done
+```
+
+---
+
+## RunPod
+
+Same commands as above, with `--provider runpod` added. State is stored separately
+from Lambda's (`runpod_*`-prefixed keys in the same `~/.llm_ddp_lambda.json`), so
+you can use both providers interchangeably without them interfering with each other.
+
+### Prerequisites
+
+```sh
+pip install paramiko requests
+export RUNPOD_API_KEY=your_key_here      # from runpod.io/console/user/settings
+export WANDB_API_KEY=your_key_here
+```
+
+No SSH key registration step needed — your public key (`~/.ssh/id_ed25519.pub`) is
+injected into every pod automatically via RunPod's standard image startup script.
+
+### Commands
+
+#### 1. Check GPU availability and pricing (do this first)
+
+```sh
+python launch.py datacenters --gpu-type a100 --provider runpod
+```
+
+This is RunPod's one-stop command — it loops every datacenter (one API call
+each, so it takes a few seconds) and prints price + live stock + how many you
+can request, per datacenter, in one table. Pick a datacenter ID with stock from
+the output; you'll need it for `setup` below.
+
+(`gpus --gpu-type a100 --provider runpod` also exists, but only shows global
+pricing — no location/stock — since RunPod's pricing API and per-datacenter
+stock API are separate; `--datacenter-id` narrows `gpus` to one datacenter at a
+time if you already know which one you want.)
+
+#### 2. One-time setup — create network volume and upload data
+
+```sh
+python launch.py setup --provider runpod --datacenter-id <id-from-step-1>
+```
+
+- Creates the network volume (or reuses one with the same `--volume-name` if it already exists)
+- Spins up a temporary pod attached to the volume, `rsync`s your local training data onto it, terminates the pod
+- Saves the volume ID and datacenter to `~/.llm_ddp_lambda.json`
+
+Only run this once. Data lives on the network volume permanently, mounted at
+`/workspace` on every future pod.
+
+**Alternative — manual data transfer without this launcher:** RunPod also offers
+[`runpodctl send/receive`](https://docs.runpod.io/pods/storage/transfer-files), a
+relay-based one-time-code transfer that needs no open ports — useful for ad hoc
+single-file pushes outside the network-volume flow entirely:
+```sh
+local$  runpodctl send myfile.tar
+pod$    runpodctl receive <code-printed-by-send>
+```
+
+#### 3. Launch a training run
+
+```sh
+python launch.py train --provider runpod --expt-name run1 --gpu-type a100 --gpu-count 2 --max-hours 8
+```
+
+Same behavior as the Lambda flow (cost confirmation, repo clone, dependency
+install, world_size patching, live log streaming, artifact download, auto-terminate,
+`--keep-alive` for debugging) — just provisioned on RunPod instead.
+
+#### 4. Reconnect / terminate
+
+```sh
+python launch.py attach --provider runpod
+python launch.py terminate --provider runpod
+```
+
+---
+
+## Verda
+
+Verda (formerly DataCrunch.io, founded 2018, NVIDIA Preferred Partner) is a useful
+fallback if Lambda Labs and RunPod both lack availability. EU-based datacenters
+(Finland, Iceland). A100 at $1.79/hr — cheaper than Lambda ($1.99), slightly more
+than RunPod PCIe ($1.39). State stored under `verda_*` keys in `~/.llm_ddp_lambda.json`.
+
+Architecturally closer to Lambda than RunPod: bare VM (not container), direct public
+IP, port 22, root user, NVMe block volumes for persistent data.
+
+### Prerequisites
+
+```sh
+pip install paramiko requests
+export VERDA_CLIENT_ID=your_client_id         # from verda.com → API settings
+export VERDA_CLIENT_SECRET=your_client_secret  # (OAuth2, not a simple API key)
+export WANDB_API_KEY=your_key_here
+```
+
+### Commands
+
+#### 1. Check GPU availability and pricing
+
+```sh
+python launch.py gpus --gpu-type a100 --provider verda
+```
+
+Shows price + which specific datacenters currently have it — all in one call
+(Verda's availability API is more like Lambda's: one query covers all locations).
+
+#### 2. One-time setup — create a persistent volume and upload data
+
+```sh
+python launch.py datacenters --provider verda          # get location codes
+python launch.py setup --provider verda --location-code FIN-01
+```
+
+Creates an NVMe volume, uploads your local training data onto it via a temporary
+instance, then terminates that instance. All future training runs mount the same
+volume at `/data`.
+
+#### 3. Launch a training run
+
+```sh
+python launch.py train --provider verda --expt-name run1 --gpu-type a100 --max-hours 8
+```
+
+Same behavior as Lambda/RunPod — cost confirmation, repo clone, dep install,
+config patch, live log streaming, artifact download, auto-terminate.
+
+#### 4. Reconnect / terminate
+
+```sh
+python launch.py attach --provider verda
+python launch.py terminate --provider verda
 ```
 
 ---
